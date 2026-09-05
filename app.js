@@ -77,6 +77,7 @@ const app = document.querySelector("#app");
 let isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 const isPackagedAndroid = window.location.hostname === "appassets.androidplatform.net";
 const isTauri = Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
+const isStaticWeb = window.location.hostname.endsWith(".github.io") || window.location.protocol === "file:";
 let databaseStatus = "connecting";
 let databaseSyncTimer;
 let locationSearchController;
@@ -114,7 +115,7 @@ function save() {
   queueDatabaseSync();
 }
 function queueDatabaseSync() {
-  if (isOffline || isPackagedAndroid || isTauri) {
+  if (isOffline || isPackagedAndroid || isStaticWeb || isTauri) {
     if (isTauri) window.clearTimeout(databaseSyncTimer);
     if (isTauri) databaseSyncTimer = window.setTimeout(() => { void saveToDatabase(); }, 250);
     return;
@@ -848,6 +849,9 @@ if (isPackagedAndroid) {
   render();
 } else if (isTauri) {
   void hydrateDatabase();
+} else if (isStaticWeb) {
+  databaseStatus = "device";
+  render();
 } else {
   void hydrateDatabase();
 }
