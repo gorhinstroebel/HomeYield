@@ -24,8 +24,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Sync static frontend
-        run: ./scripts/sync-tauri-frontend.sh
+      - name: Verify static frontend
+        run: test -f dist/index.html && test -f dist/app.js && test -f dist/styles.css
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
