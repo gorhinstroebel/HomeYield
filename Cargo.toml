@@ -7,7 +7,12 @@ edition = "2021"
 
 [lib]
 name = "homeyield_lib"
+path = "lib.rs"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "homeyield"
+path = "main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -17,3 +22,4 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"

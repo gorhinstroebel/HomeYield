@@ -76,8 +76,8 @@ let state = load();
 const app = document.querySelector("#app");
 let isOffline = typeof navigator !== "undefined" && !navigator.onLine;
 const isPackagedAndroid = window.location.hostname === "appassets.androidplatform.net";
-const isTauri = Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
-const isStaticWeb = window.location.hostname.endsWith(".github.io") || window.location.protocol === "file:";
+const hasHomeYieldNativeBridge = Boolean(window.__TAURI__ || window.__TAURI_INTERNALS__);
+const isStaticWeb = document.querySelector('meta[name="homeyield-storage"]')?.getAttribute("content") !== "sqlite";
 let databaseStatus = "connecting";
 let databaseSyncTimer;
 let locationSearchController;
@@ -105,7 +105,6 @@ function normalizeState(saved) {
   const needsTaskMigration = saved.version < 2;
   const cachedWeather = saved.weather && Array.isArray(saved.weather.forecast) ? saved.weather : null;
   const migrated = { ...DEFAULT, ...saved, version: 6, theme: ["system", "light", "dark"].includes(saved.theme) ? saved.theme : "system", customPlants: Array.isArray(saved.customPlants) ? saved.customPlants : [], plantMeta: saved.plantMeta && typeof saved.plantMeta === "object" ? saved.plantMeta : {}, tasks: needsTaskMigration ? createTasks(saved.plants) : (Array.isArray(saved.tasks) ? saved.tasks : []), logs: Array.isArray(saved.logs) ? saved.logs : [], plantedAt: saved.plantedAt || {}, location: saved.location || null, locationResults: [], locationSearchStatus: "", locationQuery: "", weather: cachedWeather, weatherStatus: "" };
-  if (!migrated.tasks.length && migrated.plants.length) migrated.tasks = createTasks(migrated.plants);
   if (migrated.screen === "garden" || migrated.screen === "harvest") migrated.screen = "home";
   return migrated;
 }
@@ -115,9 +114,9 @@ function save() {
   queueDatabaseSync();
 }
 function queueDatabaseSync() {
-  if (isOffline || isPackagedAndroid || isStaticWeb || isTauri) {
-    if (isTauri) window.clearTimeout(databaseSyncTimer);
-    if (isTauri) databaseSyncTimer = window.setTimeout(() => { void saveToDatabase(); }, 250);
+  if (isOffline || isPackagedAndroid || isStaticWeb || hasHomeYieldNativeBridge) {
+    if (hasHomeYieldNativeBridge) window.clearTimeout(databaseSyncTimer);
+    if (hasHomeYieldNativeBridge) databaseSyncTimer = window.setTimeout(() => { void saveToDatabase(); }, 250);
     return;
   }
   window.clearTimeout(databaseSyncTimer);
@@ -125,7 +124,7 @@ function queueDatabaseSync() {
 }
 async function saveToDatabase() {
   try {
-    if (isTauri) {
+    if (hasHomeYieldNativeBridge) {
       await invokeNative("save_state", { stateJson: JSON.stringify(state) });
       databaseStatus = "ready";
       return;
@@ -149,7 +148,7 @@ async function invokeNative(command, args) {
 }
 async function hydrateDatabase() {
   try {
-    if (isTauri) {
+    if (hasHomeYieldNativeBridge) {
       const stateJson = await invokeNative("load_state");
       if (stateJson) {
         state = normalizeState(JSON.parse(stateJson));
@@ -260,7 +259,13 @@ function daysSince(id) {
   if (date) return Math.max(1, Math.floor((Date.now() - new Date(`${date}T12:00:00`).getTime()) / 86400000) + 1);
   return state.planted === "month" ? 31 : state.planted === "weekend" ? 7 : 1;
 }
-function go(screen) { state.screen = screen; save(); render(); }
+function go(screen) {
+  state.screen = screen;
+  save();
+  render();
+  window.scrollTo(0, 0);
+  app.querySelector("h1")?.focus({ preventScroll: true });
+}
 function icon(item) {
   const seed = [...item.id].reduce((total, character) => total + character.charCodeAt(0), 0);
   const variant = seed % 6;
@@ -303,7 +308,16 @@ function gardenArt(type) {
   return art[type] || "";
 }
 function nav() {
-  return `<nav class="nav" aria-label="Main navigation">${[["home", "Today"], ["plants", "My plants"], ["diagnose", "Plant help"], ["progress", "Progress"], ["theme", themeLabel()]].map(([id, label]) => id === "theme" ? `<button onclick="cycleTheme()" aria-label="Change theme">${navArt(id)}<span>${label}</span></button>` : `<button class="${state.screen === id || (id === "plants" && state.screen === "plant-detail") ? "active" : ""}" onclick="go('${id}')">${navArt(id)}<span>${label}</span></button>`).join("")}</nav>`;
+  return `<nav class="nav" aria-label="Main navigation">${[["home", "Today"], ["plants", "My plants"], ["diagnose", "Plant help"], ["progress", "Progress"]].map(([id, label]) => {
+    const active = state.screen === id || (id === "plants" && ["plant-detail", "catalog"].includes(state.screen)) || (id === "diagnose" && state.screen === "diagnosis-result");
+    return `<button class="${active ? "active" : ""}" ${active ? 'aria-current="page"' : ""} onclick="go('${id}')">${navArt(id)}<span>${label}</span></button>`;
+  }).join("")}<div class="nav-note"><span class="eyebrow">A little care, daily.</span><p>Good things take growing.</p><a href="downloads.html">Get the app <span aria-hidden="true">&rarr;</span></a></div></nav>`;
+}
+function appHeader() {
+  return `<header class="app-header"><button class="brand brand-button" onclick="go('home')" aria-label="HomeYield home"><img src="icon.svg" width="36" height="36" alt="">Home<span>Yield</span></button><div class="app-tools"><a class="download-link" href="downloads.html">Get the app <span aria-hidden="true">&darr;</span></a>${themeControl()}</div></header>`;
+}
+function screenToolbar(back, label) {
+  return `<header class="topbar"><button class="icon-button" onclick="go('${back}')" aria-label="${label}"><span aria-hidden="true">&larr;</span> Back</button><span class="eyebrow">${label}</span></header>`;
 }
 function toast(message) {
   document.querySelector(".toast")?.remove();
@@ -400,19 +414,21 @@ function offlineBanner() {
 
 function home() {
   const hasPlants = state.plants.length > 0;
+  if (hasPlants) ensureCareTasks();
   const loggedToday = state.logs.filter((log) => log.date === todayKey()).length;
   if (!hasPlants) {
-    return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div>${weatherButton()}</header>
+    return `<section class="screen screen-home"><div class="welcome-line"><span class="eyebrow">Less guesswork. More growing.</span>${weatherButton()}</div>
       <div class="hero"><div class="hero-copy"><div class="eyebrow">Your garden companion</div><h1>Know what to do next.</h1><p>HomeYield keeps a simple record of your real plants and turns care into clear, timely steps.</p><button class="primary" onclick="go('onboarding')">Start tracking my plants</button></div>${gardenArt("hero")}</div>
-      <section class="section"><div class="eyebrow">A calmer way to grow</div><h2>Guidance, not a digital garden.</h2><p class="intro">Log what you planted, get practical reminders, and see how your plants are doing over time.</p></section></section>${nav()}`;
+      <section class="section"><div class="eyebrow">A calmer way to grow</div><h2>Real plants. A little peace of mind.</h2><p class="intro">From your first windowsill herb to a thriving backyard. Make room for the good stuff.</p><div class="feature-grid"><article class="feature-card">${navArt("plants")}<h3>A home for every plant</h3><p>Choose from ${PLANTS.length} plant profiles or add your own. Keep photos and notes in one place.</p></article><article class="feature-card">${navArt("home")}<h3>One clear next step</h3><p>Simple care reminders and local weather help you know when to check in.</p></article><article class="feature-card">${navArt("progress")}<h3>Watch your care add up</h3><p>Log the small things, follow growth milestones, and celebrate your harvest.</p></article></div></section><aside class="download-callout"><div><h2>Your garden, wherever you are.</h2><p>Use HomeYield in your browser or explore apps for your devices. No account needed.</p></div><a class="secondary" href="downloads.html">Explore downloads <span aria-hidden="true">&rarr;</span></a></aside></section>${nav()}`;
   }
-  return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div>${weatherButton()}</header>
+  const tasks = dueTasks();
+  return `<section class="screen screen-home"><header class="page-heading"><div><div class="eyebrow">A little care goes a long way</div><h1>Today in your garden.</h1><p class="intro">Take a moment. See what needs you.</p></div>${weatherButton()}</header>
     ${weatherBriefing()}
     <div class="stats-row"><div><strong>${state.plants.length}</strong><span>plants tracked</span></div><div><strong>${loggedToday}</strong><span>actions today</span></div><div><strong>${state.logs.length}</strong><span>care logs</span></div></div>
-    <section class="section"><div class="section-head"><div><div class="eyebrow">At a glance</div><h2>Your garden</h2></div><button class="text-button" onclick="go('plants')">View records</button></div>
+    <div class="dashboard-grid"><section class="section"><div class="section-head"><div><div class="eyebrow">Your next small steps</div><h2>Today's care</h2></div><span class="pill">${tasks.length} to do</span></div><div class="task-list">${tasks.length ? tasks.map(taskCard).join("") : `<div class="empty success-empty"><strong>All caught up.</strong><br>Your garden is in good hands. Enjoy a little time outside.</div>`}</div></section><section class="section"><div class="section-head"><div><div class="eyebrow">At a glance</div><h2>Your garden</h2></div><button class="text-button" onclick="go('plants')">View records</button></div>
       <div class="glance-list">${state.plants.map(glanceCard).join("")}</div>
       <p class="hint">Open a plant when you’re outside. HomeYield keeps the context quiet until you need it.</p>
-    </section>
+    </section></div>
     </section>${nav()}`;
 }
 
@@ -588,7 +604,7 @@ function locationScreen() {
   const results = state.locationResults.map((result, index) => `<button class="location-result" onclick="chooseLocationResult(${index})"><strong>${escapeHtml(result.city)}</strong><span>${escapeHtml([result.admin1, result.country].filter(Boolean).join(", "))}</span></button>`).join("");
   const searchMessage = state.locationSearchStatus === "loading" ? `<div class="weather-loading" role="status">Finding matching cities…</div>` : state.locationSearchStatus === "empty" ? `<div class="notice location-message">No matching cities found. Try a nearby town or check the spelling.</div>` : state.locationSearchStatus === "error" ? `<div class="notice location-message">City search is unavailable. Try again or use your current location.</div>` : "";
   const locationMessage = state.weatherStatus === "error" && !state.location ? `<div class="notice location-message">We couldn’t read your device location. No previous city was kept. Search for your city instead.</div>` : "";
-  return `<section class="screen"><header class="topbar"><button class="icon-button" onclick="go('home')" aria-label="Back to today">Back</button><div class="brand">Home<span>Yield</span></div></header>
+  return `<section class="screen screen-location">${screenToolbar("home", "Back to today")}
     <div class="eyebrow">Garden location</div><h1>Pinpoint your garden.</h1><p class="intro">Use your current location, or search and choose the exact city. We use the selected coordinates for weather.</p>
     <button class="location-button" onclick="useCurrentLocation()" ${state.weatherStatus === "loading" ? "disabled" : ""}>◎ Use my current location</button>
     <form class="location-form" onsubmit="searchLocations(event)"><label for="garden-city">Search by city</label><div class="form-row"><input id="garden-city" name="city" maxlength="80" autocomplete="address-level2" value="${locationInput}" placeholder="e.g. Springfield" required><button class="primary" type="submit" ${state.locationSearchStatus === "loading" ? "disabled" : ""}>${state.locationSearchStatus === "loading" ? "Searching…" : "Find city"}</button></div><small class="location-helper">Choose from the matches below; don’t rely on the first result.</small></form>
@@ -639,7 +655,7 @@ function useCurrentLocation() {
 function onboarding() {
   const chosen = state.onboardingPlants || [];
   const dates = [["today", "Planted today", "Starting fresh, right now."], ["weekend", "Planted last weekend", "About 3 to 9 days ago."], ["month", "Planted a month ago", "Already settling in."]];
-  return `<section class="screen"><header class="topbar"><button class="icon-button" onclick="go('home')" aria-label="Go back">Back</button><div class="brand">Home<span>Yield</span></div></header><div class="stepper"><span class="active"></span><span class="${chosen.length ? "active" : ""}"></span></div>
+  return `<section class="screen screen-onboarding">${screenToolbar("home", "Your first plants")}<div class="stepper" aria-hidden="true"><span class="active"></span><span class="${chosen.length ? "active" : ""}"></span></div>
     <div class="eyebrow">Step 1 of 2</div><h1>Which plants are you caring for?</h1><p class="intro">Tap a category or a plant. Every library plant includes a care starting point.</p><div class="category-chips">${catalogCategories()}</div><div class="catalog-toolbar"><input aria-label="Search plant library" placeholder="Search 48 plants" oninput="filterCatalog(event)"><span class="catalog-count">${PLANTS.length} plants</span></div><div class="plant-grid">${PLANTS.map((item) => `<button class="plant-card catalog-card ${chosen.includes(item.id) ? "selected" : ""}" data-category="${item.category}" data-search="${item.name} ${item.category}" onclick="togglePlant('${item.id}')">${icon(item)}<strong>${item.name}</strong><small>${item.category}</small></button>`).join("")}</div>
     ${customPlantForm("onboarding")}
     ${chosen.length ? `<div class="selected-plants"><span class="muted">Selected:</span>${chosen.map((id) => `<span class="selected-plant">${escapeHtml(plant(id)?.name || id)}</span>`).join("")}</div><section class="section"><div class="eyebrow">Step 2 of 2</div><h2>When did you plant them?</h2><p class="muted">Pick a quick estimate or choose the exact date.</p><div class="date-options">${dates.map(([id, label, detail]) => `<button class="date-option ${state.onboardingDate === id ? "selected" : ""}" onclick="chooseDate('${id}')">${label}<small>${detail}</small></button>`).join("")}</div><div class="exact-date ${state.onboardingDate === "exact" ? "selected" : ""}"><label for="exact-plant-date">Exact planting date</label><input id="exact-plant-date" type="date" max="${todayKey()}" value="${state.onboardingExactDate || ""}" onchange="chooseExactDate(event)"><small>Use the date on your note, receipt, or calendar.</small></div></section>` : ""}</section><div class="bottom-action"><button class="primary" ${!(chosen.length && state.onboardingDate && (state.onboardingDate !== "exact" || state.onboardingExactDate)) ? "disabled" : ""} onclick="finishOnboarding()">Start my care guide</button></div>`;
@@ -724,7 +740,7 @@ function catalogCard(item) {
 function catalog() {
   const mode = state.catalogMode || "plants";
   const back = mode === "onboarding" ? "onboarding" : "plants";
-  return `<section class="screen"><header class="topbar"><button class="icon-button" onclick="go('${back}')" aria-label="Back">Back</button><div class="brand">Home<span>Yield</span></div></header><div class="eyebrow">HomeYield plant library</div><h1>Find your plant.</h1><p class="intro">Start with a category, or search by name. Add a detailed plant profile in one tap.</p><div class="category-chips">${catalogCategories()}</div><div class="catalog-toolbar"><input aria-label="Search full plant library" placeholder="Search vegetables, herbs, flowers..." oninput="filterCatalog(event)"><span class="catalog-count">${PLANTS.length} plants</span></div><div class="library-list">${PLANTS.map(catalogCard).join("")}</div><div class="notice">Can’t find it? <button class="text-button" onclick="go('${back}')">Use custom entry</button></div></section>${nav()}`;
+  return `<section class="screen">${screenToolbar(back, "Plant library")}<div class="eyebrow">HomeYield plant library</div><h1>Find your plant.</h1><p class="intro">Start with a category, or search by name. Add a detailed plant profile in one tap.</p><div class="category-chips">${catalogCategories()}</div><div class="catalog-toolbar"><input aria-label="Search full plant library" placeholder="Search vegetables, herbs, flowers..." oninput="filterCatalog(event)"><span class="catalog-count" role="status">${PLANTS.length} plants</span></div><div class="library-list">${PLANTS.map(catalogCard).join("")}</div><div class="notice">Can’t find it? <button class="text-button" onclick="go('${back}')">Use custom entry</button></div></section>${nav()}`;
 }
 function addCustomPlant(event, mode) {
   event.preventDefault();
@@ -764,9 +780,9 @@ function plantMiniCard(id) {
   return `<article class="plant-mini"><button class="plant-mini-main" onclick="openPlant('${id}')">${icon(item)}<span><strong>${item.name}</strong><small>${nextWaterText(id)}</small></span></button><button class="quick-log" onclick="logQuickAction('${id}', 'water')" aria-label="Log ${item.name} as watered">+ Water</button></article>`;
 }
 function plants() {
-  if (!state.plants.length) return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div></header><div class="empty-page">${gardenArt("empty")}<h1>Start with your real plants.</h1><p class="intro">Add what you are caring for and HomeYield will guide the next step.</p><button class="primary" onclick="go('onboarding')">Add plants</button></div></section>${nav()}`;
+  if (!state.plants.length) return `<section class="screen"><div class="empty-page">${gardenArt("empty")}<h1>Start with your real plants.</h1><p class="intro">Add what you are caring for and HomeYield will guide the next step.</p><button class="primary" onclick="go('onboarding')">Add plants</button></div></section>${nav()}`;
   const recent = state.logs.slice(0, 5);
-  return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div><span class="pill">${state.plants.length} tracked</span></header><div class="eyebrow">Your care record</div><h1>My plants.</h1><p class="intro">A quick record of what is happening in the garden you actually have.</p><div class="plant-record-list">${state.plants.map(plantRecord).join("")}</div>${customPlantForm("plants")}
+  return `<section class="screen"><header class="page-heading"><div><div class="eyebrow">Your care record</div><h1>My plants.</h1><p class="intro">A quick record of what is happening in the garden you actually have.</p></div><span class="pill">${state.plants.length} tracked</span></header><div class="plant-record-list">${state.plants.map(plantRecord).join("")}</div>${customPlantForm("plants")}
     <section class="section"><div class="section-head"><div><div class="eyebrow">What you have done</div><h2>Recent activity</h2></div></div>${recent.length ? `<div class="activity-list">${recent.map(activity).join("")}</div>` : `<div class="empty">Your first watering or check will appear here.</div>`}</section></section>${nav()}`;
 }
 function plantRecord(id) {
@@ -785,7 +801,7 @@ function plantDetail() {
   const watered = lastLog(item.id, "water");
   const meta = plantMeta(item.id);
   const photo = meta.photo ? `<img class="plant-photo" src="${escapeHtml(meta.photo)}" alt="Photo of ${escapeHtml(item.name)}">` : `<div class="photo-placeholder">Add a photo from your garden</div>`;
-  return `<section class="screen"><header class="topbar"><button class="icon-button" onclick="go('plants')" aria-label="Back to my plants">Back</button><div class="brand">Home<span>Yield</span></div></header><div class="plant-detail-head">${icon(item)}<div><div class="eyebrow">Care guide</div><h1>${item.name}</h1><p class="muted">${item.sun}</p></div></div>
+  return `<section class="screen screen-detail">${screenToolbar("plants", "Back to my plants")}<div class="plant-detail-head">${icon(item)}<div><div class="eyebrow">Care guide</div><h1>${item.name}</h1><p class="muted">${item.sun}</p></div></div>
     <div class="care-card"><div class="eyebrow">Right now</div><h2>${nextWaterText(item.id)}</h2><p>${item.tip}</p><div class="task-actions"><button class="primary" onclick="logQuickAction('${item.id}', 'water')">Log watered</button><button class="secondary" onclick="logQuickAction('${item.id}', 'check')">Log a check</button><button class="secondary" onclick="logQuickAction('${item.id}', 'harvest')">Log harvest</button></div></div>
     <section class="section record-detail"><div class="section-head"><div><div class="eyebrow">Your record</div><h2>Make it yours</h2></div></div>${photo}<label class="photo-upload">Choose a plant photo<input type="file" accept="image/*" onchange="savePlantPhoto(event, '${item.id}')"></label><form class="metadata-form" onsubmit="savePlantMeta(event, '${item.id}')"><label>Variety<input name="variety" maxlength="80" value="${escapeHtml(meta.variety || "")}" placeholder="e.g. San Marzano"></label><label>Where is it?<input name="place" maxlength="80" value="${escapeHtml(meta.place || "")}" placeholder="e.g. Back patio"></label><label>Notes<textarea name="notes" maxlength="500" placeholder="What did you notice?">${escapeHtml(meta.notes || "")}</textarea></label><button class="secondary" type="submit">Save record</button></form></section>
     <section class="section"><div class="eyebrow">Planting note</div><h2>Useful nearby advice</h2><p class="intro">${item.companions}</p></section>
@@ -794,7 +810,7 @@ function plantDetail() {
 
 function diagnose() {
   const selected = state.plants.length ? plant(state.diagnosisPlant || state.plants[0]) : null;
-  return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div></header>  <div class="eyebrow">Plant help</div><h1>What do you need help with?</h1><p class="intro">Choose a simple path. You don’t need to know the gardening words first.</p>
+  return `<section class="screen screen-help"><div class="eyebrow">Plant help</div><h1>What do you need help with?</h1><p class="intro">Choose a simple path. You don’t need to know the gardening words first.</p>
   ${state.plants.length ? `<div class="diagnose-plant-picker"><span class="muted">I’m asking about</span><div class="picker-row">${state.plants.map((id) => { const item = plant(id); return `<button class="plant-chip ${selected?.id === id ? "selected" : ""}" onclick="chooseDiagnosisPlant('${id}')">${icon(item)}${item.name}</button>`; }).join("")}</div></div><div class="help-paths">${!state.helpMode ? `<button class="help-path-card" onclick="setHelpMode('care')"><span class="help-path-icon">✓</span><span><strong>What should I do today?</strong><small>Get the next care step for ${selected.name}.</small></span><b>›</b></button><button class="help-path-card" onclick="setHelpMode('symptoms')"><span class="help-path-icon">?</span><span><strong>My plant looks unhappy</strong><small>Choose the picture that looks most like it.</small></span><b>›</b></button><button class="help-path-card" onclick="setHelpMode('tips')"><span class="help-path-icon">i</span><span><strong>Give me plant tips</strong><small>See simple light, water, and growing advice.</small></span><b>›</b></button>` : helpModeContent(selected)}</div>` : `<div class="help-empty">${gardenArt("help")}<h2>Start with one real plant.</h2><p class="intro">Add a plant so HomeYield can give advice that belongs to your garden.</p><button class="primary" onclick="go('onboarding')">Add my first plant</button><button class="secondary" onclick="browseCatalog('plants')">Browse plant library</button></div>`}
   </section>${nav()}`;
 }
@@ -811,8 +827,13 @@ function setHelpMode(mode) {
 function resetHelp() { state.helpMode = ""; save(); render(); }
 function chooseDiagnosisPlant(id) { state.diagnosisPlant = id; save(); render(); }
 function diagnosis(type) {
+  state.diagnosisType = type;
+  go("diagnosis-result");
+}
+function diagnosisResult() {
+  const type = state.diagnosisType;
   const yellow = type === "yellow"; const item = plant(state.diagnosisPlant);
-  app.innerHTML = `<section class="screen"><header class="topbar"><button class="icon-button" onclick="go('diagnose')" aria-label="Choose another symptom">Back</button><div class="brand">Home<span>Yield</span></div></header><div class="result"><div class="eyebrow">${item ? `${item.name} · likely answer` : "Likely answer"}</div><h1>${yellow ? "A thirsty lower layer." : "Possible leaf spot."}</h1><p>${yellow ? "Older leaves often yellow when water is inconsistent. Give the soil a slow, deep soak and remove fully yellow leaves." : "Avoid splashing leaves when watering. Remove the most affected leaves and give your plant room for airflow."}</p><button class="primary" onclick="addDiagnosisTask('${type}')">Add a care task</button></div><section class="section"><h2>Keep watching</h2><p class="intro">If the change spreads quickly or affects new leaves, take a fresh photo and check again tomorrow.</p></section></section>${nav()}`;
+  return `<section class="screen screen-help">${screenToolbar("diagnose", "Choose another symptom")}<div class="result"><div class="eyebrow">${item ? `${item.name} · likely answer` : "Likely answer"}</div><h1>${yellow ? "A thirsty lower layer." : "Possible leaf spot."}</h1><p>${yellow ? "Older leaves often yellow when water is inconsistent. Give the soil a slow, deep soak and remove fully yellow leaves." : "Avoid splashing leaves when watering. Remove the most affected leaves and give your plant room for airflow."}</p><button class="primary" onclick="addDiagnosisTask('${type}')">Add a care task</button></div><section class="section"><h2>Keep watching</h2><p class="intro">If the change spreads quickly or affects new leaves, take a fresh photo and check again tomorrow.</p></section></section>${nav()}`;
 }
 function addDiagnosisTask(type) {
   const plantId = state.diagnosisPlant || state.plants[0]; const item = plant(plantId);
@@ -823,8 +844,8 @@ function addDiagnosisTask(type) {
 }
 
 function progress() {
-  if (!state.plants.length) return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div></header><div class="empty-page">${gardenArt("progress")}<h1>Your progress starts with a plant.</h1><p class="intro">Track a plant to see its age, milestones, and harvest window.</p><button class="primary" onclick="go('onboarding')">Add plants</button></div></section>${nav()}`;
-  return `<section class="screen"><header class="topbar"><div class="brand">Home<span>Yield</span></div></header><div class="eyebrow">Progress you can use</div><h1>How things are going.</h1><p class="intro">A simple estimate based on when you planted—not a digital garden to maintain.</p>${state.plants.map(growthCard).join("")}</section>${nav()}`;
+  if (!state.plants.length) return `<section class="screen"><div class="empty-page">${gardenArt("progress")}<h1>Your progress starts with a plant.</h1><p class="intro">Track a plant to see its age, milestones, and harvest window.</p><button class="primary" onclick="go('onboarding')">Add plants</button></div></section>${nav()}`;
+  return `<section class="screen"><div class="eyebrow">Progress you can use</div><h1>How things are going.</h1><p class="intro">A simple estimate based on when you planted—not a digital garden to maintain.</p><div class="growth-grid">${state.plants.map(growthCard).join("")}</div></section>${nav()}`;
 }
 function growthCard(id) {
   const item = plant(id); const meta = plantMeta(id); const plantedDays = daysSince(id); const progressValue = Math.min(100, Math.round(plantedDays / item.days * 100)); const ready = progressValue >= 100;
@@ -835,7 +856,19 @@ function growthCard(id) {
   return `<article class="growth-card"><div class="growth-top">${icon(item)}<div><h2>${item.name}</h2><span>${stage} · ${Math.max(0, item.days - plantedDays)} days estimated</span></div><strong>${progressValue}%</strong></div><div class="progress"><span style="width:${progressValue}%"></span></div><p>${ready ? "Pick when it looks and tastes its best." : plantedDays > 25 ? "Keep watching for flowers or a harvestable size." : "Small, consistent care matters most right now."}</p><div class="growth-meta"><span>${nextWaterText(id)}</span><span>${meta.harvestCount || 0} harvested</span></div><p class="weather-note">${weatherNote}</p><button class="task-action" onclick="logQuickAction('${id}', 'harvest')">Log harvest</button></article>`;
 }
 
-function render() { applyTheme(); app.innerHTML = `${offlineBanner()}${state.screen === "onboarding" ? themeControl() : ""}${({ home, onboarding, plants, catalog, "plant-detail": plantDetail, diagnose, progress, location: locationScreen }[state.screen] || home)()}`; attachSwipes(); }
+function render() {
+  const focusedAction = app.contains(document.activeElement) ? document.activeElement.getAttribute("onclick") : null;
+  applyTheme();
+  app.dataset.screen = state.screen;
+  app.innerHTML = `${appHeader()}${offlineBanner()}${({ home, onboarding, plants, catalog, "plant-detail": plantDetail, diagnose, "diagnosis-result": diagnosisResult, progress, location: locationScreen }[state.screen] || home)()}`;
+  const content = app.querySelector(".screen");
+  content.id = "app-content";
+  content.setAttribute("role", "main");
+  content.tabIndex = -1;
+  app.querySelector("h1").tabIndex = -1;
+  if (focusedAction) Array.from(app.querySelectorAll("button[onclick]")).find((button) => button.getAttribute("onclick") === focusedAction)?.focus({ preventScroll: true });
+  attachSwipes();
+}
 function attachSwipes() {
   document.querySelectorAll(".task-card").forEach((card) => {
     let start;
@@ -847,7 +880,7 @@ render();
 if (isPackagedAndroid) {
   databaseStatus = "device";
   render();
-} else if (isTauri) {
+} else if (hasHomeYieldNativeBridge) {
   void hydrateDatabase();
 } else if (isStaticWeb) {
   databaseStatus = "device";

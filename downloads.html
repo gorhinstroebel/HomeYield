@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#234b35">
+    <meta name="homeyield-download-source" content="github">
+    <meta name="description" content="Get HomeYield for Windows, macOS, Linux, and mobile. Find available installers or start growing right in your browser.">
+    <title>Download HomeYield</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="downloads.css">
+    <script src="downloads.js" defer></script>
+  </head>
+  <body class="downloads-page">
+    <a class="skip-link" href="#downloads-content">Skip to downloads</a>
+    <div class="downloads-shell">
+      <header class="app-header">
+        <a class="brand" href="index.html"><img src="icon.svg" width="36" height="36" alt="">Home<span>Yield</span></a>
+        <a class="secondary" href="index.html">Open my garden <span aria-hidden="true">&rarr;</span></a>
+      </header>
+      <main id="downloads-content" tabindex="-1">
+        <section class="download-hero">
+          <div>
+            <div class="eyebrow">Your companion, beyond the browser</div>
+            <h1>Good things grow.<br><span>On every screen.</span></h1>
+            <p>A little guidance for the garden you actually have. Keep your plant records close, from the kitchen windowsill to your desk.</p>
+            <a class="primary" href="#platforms">Find your download <span aria-hidden="true">&darr;</span></a>
+            <span class="download-promise">No account. Local records. A calmer way to grow.</span>
+          </div>
+          <div class="device-art" role="img" aria-label="Illustration of HomeYield adapting from a desktop to a phone">
+            <div class="desktop-art">
+              <div class="device-dots"><i></i><i></i><i></i></div>
+              <div class="art-layout">
+                <div class="art-sidebar"><img src="icon.svg" alt=""><i></i><i></i><i></i></div>
+                <div class="art-content"><span>Today in your garden.</span><div class="art-garden"><svg viewBox="0 0 180 100" aria-hidden="true"><circle cx="145" cy="25" r="16" fill="#f5bd4c"/><path d="M50 100V40M105 100V55" stroke="#d9ec9e" stroke-width="5"/><path d="M50 62C16 62 12 35 20 22c25 0 37 17 30 40zm1 0c3-29 26-42 43-35 0 23-19 40-43 35zM104 77c-24 0-40-18-34-34 24 0 38 15 34 34zm3 0c0-24 17-41 39-33 0 21-17 35-39 33z" fill="#82c995"/></svg></div><div class="art-cards"><i></i><i></i><i></i></div></div>
+              </div>
+            </div>
+            <div class="phone-art"><div class="phone-speaker"></div><img src="icon.svg" alt=""><strong>A little care,<br>daily.</strong><div class="art-leaf" aria-hidden="true"></div><div class="art-button"></div><div class="art-phone-nav"><i></i><i></i><i></i></div></div>
+            <span class="device-caption">Same thoughtful companion. Room to grow.</span>
+          </div>
+        </section>
+
+        <section id="platforms" class="platform-section" aria-labelledby="platform-heading">
+          <div class="section-head"><div><div class="eyebrow">Make yourself at home</div><h2 id="platform-heading">Choose your platform.</h2></div><span class="pill">Powered by Tauri</span></div>
+          <div class="release-notice">
+            <div><strong id="release-title">Find the latest release</strong><p id="release-status" role="status">Checking published installers. You can always browse the release page below.</p></div>
+            <button id="retry-downloads" class="secondary" type="button" hidden>Check again</button>
+          </div>
+          <noscript><p class="notice">JavaScript is off. The platform links below open GitHub Releases, where available installers are listed.</p></noscript>
+          <div class="platform-grid">
+            <article class="platform-card">
+              <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M3 6 14 4v11H3zm13-2 13-2v13H16zM3 17h11v11L3 26zm13 0h13v13l-13-2z" fill="currentColor"/></svg></span><div><h3>Windows</h3><p>For your everyday desktop.</p></div></div>
+              <p class="platform-requirements">Windows 10 or later. The installer includes WebView2 setup when needed.</p>
+              <div class="download-options">
+                <a class="download-option" data-asset="HomeYield-windows-x64-setup.exe" data-label="Download for Windows x64" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Intel / AMD <small>64-bit &middot; .exe installer</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-windows-arm64-setup.exe" data-label="Download for Windows ARM64" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>ARM64 <small>Snapdragon &middot; .exe installer</small></span><span class="asset-status">View releases &rarr;</span></a>
+              </div>
+            </article>
+            <article class="platform-card">
+              <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="3" y="4" width="26" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 23v5M10 28h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div><h3>macOS</h3><p>A natural fit for your Mac.</p></div></div>
+              <p class="platform-requirements">macOS 11 or later. Choose the chip shown in Apple menu &gt; About This Mac.</p>
+              <div class="download-options">
+                <a class="download-option" data-asset="HomeYield-macos-arm64.dmg" data-label="Download for Mac Apple silicon" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Apple silicon <small>M-series chips &middot; .dmg</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-macos-x64.dmg" data-label="Download for Mac Intel" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Intel <small>64-bit Intel chips &middot; .dmg</small></span><span class="asset-status">View releases &rarr;</span></a>
+              </div>
+            </article>
+            <article class="platform-card">
+              <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="3" y="4" width="26" height="24" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="m8 11 5 5-5 5m9 0h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3>Linux</h3><p>A little growth, your way.</p></div></div>
+              <p class="platform-requirements">Ubuntu 22.04+ or a compatible distribution with WebKitGTK 4.1. AppImage needs FUSE.</p>
+              <div class="download-options">
+                <a class="download-option" data-asset="HomeYield-linux-x64.AppImage" data-label="Download Linux x64 AppImage" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Intel / AMD <small>64-bit &middot; AppImage</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-linux-arm64.AppImage" data-label="Download Linux ARM64 AppImage" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>ARM64 <small>64-bit ARM &middot; AppImage</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-linux-x64.deb" data-label="Download Linux x64 Debian package" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Intel / AMD <small>Debian / Ubuntu &middot; .deb</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-linux-arm64.deb" data-label="Download Linux ARM64 Debian package" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>ARM64 <small>Debian / Ubuntu &middot; .deb</small></span><span class="asset-status">View releases &rarr;</span></a>
+              </div>
+            </article>
+            <article class="platform-card mobile-platform">
+              <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="2" width="16" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 6h6m-4 20h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div><h3>Android</h3><p>Ready when you head outside.</p></div></div>
+              <p class="platform-requirements">A native Tauri APK is available when a signed mobile release is published. Browser installation works today.</p>
+              <div class="download-options">
+                <a class="download-option" data-asset="HomeYield-android-arm64.apk" data-label="Download Android ARM64 APK" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Android ARM64 <small>Production-signed .apk installer</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-android-arm64-preview.apk" data-label="Download Android ARM64 preview APK" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Android preview <small>Development-key signed &middot; .apk</small></span><span class="asset-status">View releases &rarr;</span></a>
+              </div>
+              <span class="mobile-note">The preview is for local testing, not Google Play. Keep the signing key to update an existing preview installation.</span>
+              <a class="text-link" href="#mobile-install">Install from your browser &rarr;</a>
+            </article>
+            <article class="platform-card mobile-platform">
+              <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="7" y="2" width="18" height="28" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 5h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="26" r="1" fill="currentColor"/></svg></span><div><h3>iPhone &amp; iPad</h3><p>Your garden, in your pocket.</p></div></div>
+              <p class="platform-requirements">Native distribution requires Apple signing and TestFlight or App Store approval. There is no public iOS installer yet.</p>
+              <a class="secondary" href="#mobile-install">Add to your Home Screen <span aria-hidden="true">&rarr;</span></a>
+              <span class="mobile-note">Use the web app on iOS and iPadOS today.</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="install-section" id="mobile-install" aria-labelledby="mobile-heading">
+          <div><div class="eyebrow">No installer? No problem.</div><h2 id="mobile-heading">A home-screen home for your garden.</h2><p class="intro">The web app adapts to your device and keeps your records in this browser. Open it once online to prepare the offline app shell.</p><a class="primary" href="index.html">Start in your browser <span aria-hidden="true">&rarr;</span></a></div>
+          <div class="install-steps"><div><span>01</span><div><h3>iPhone or iPad</h3><p>Open HomeYield in Safari. Tap Share, then <strong>Add to Home Screen</strong>.</p></div></div><div><span>02</span><div><h3>Android</h3><p>Open HomeYield in Chrome. Use the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</p></div></div></div>
+        </section>
+        <aside class="download-details"><h2>A few things worth knowing.</h2><p>Your garden stays on the device where you create it. Browser records and native app records are separate; they do not automatically sync. Weather and release checks need an internet connection.</p><p>Only published release assets become direct download buttons. Check the release notes for signing status and SHA-256 checksums before installing; unsigned preview builds may show operating-system warnings. Do not bypass a warning for a file you do not trust.</p><a class="text-link" href="https://github.com/gorhinstroebel/HomeYield/releases" target="_blank" rel="noopener noreferrer">All releases &amp; checksums <span aria-hidden="true">&nearr;</span></a></aside>
+      </main>
+      <footer class="downloads-footer"><span>HomeYield. Good things take growing.</span><div><a href="privacy.html">Privacy</a><a href="https://github.com/gorhinstroebel/HomeYield" target="_blank" rel="noopener noreferrer">Source on GitHub</a></div></footer>
+    </div>
+  </body>
+</html>

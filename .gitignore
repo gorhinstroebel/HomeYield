@@ -1,8 +1,29 @@
-data/
+# Regenerable dependencies, generated projects and build output.
+node_modules/
+target/
+gen/
+dist/
+.gradle/
+build/
 __pycache__/
-android/.gradle/
-android/build/
-android/app/build/
+.packaging-test-work/
+test-results/
+playwright-report/
+.native-smoke-profile/
+*.log
+*.tmp
+local.properties
+
+# Finished binaries are kept locally, not committed.
+release-assets/
 HomeYield-*.apk
-src-tauri/target/
-src-tauri/gen/
+HomeYield-*.exe
+
+# Non-regenerable local data and signing material: preserve during cleanup.
+data/
+.signing/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.p8

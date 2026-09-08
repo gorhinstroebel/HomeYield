@@ -1,0 +1,134 @@
+name: Build Tauri Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Debug is developer-signed; signed-release requires permanent signing secrets
+        type: choice
+        options: [debug, signed-release]
+        default: debug
+      release_tag:
+        description: Optional existing desktop release tag to build (for example v1.0.1)
+        type: string
+        default: ""
+      publish_to_release:
+        description: Attach signed APK to that existing release (never publishes debug APKs)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Install Android toolchain
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: android-arm64
+      - run: npm ci
+      - run: npm test
+      - name: Validate requested release
+        env:
+          MODE: ${{ inputs.mode }}
+          TAG: ${{ inputs.release_tag }}
+          PUBLISH: ${{ inputs.publish_to_release }}
+        run: |
+          node scripts/check-version.cjs "$TAG"
+          if [[ "$PUBLISH" == true && ( "$MODE" != signed-release || -z "$TAG" ) ]]; then
+            echo "Publishing requires signed-release mode and an existing version tag."
+            exit 1
+          fi
+      - name: Generate real Tauri Android project
+        run: npm run tauri -- android init --ci --skip-targets-install
+      - name: Generate HomeYield launcher icons
+        run: |
+          npm run tauri -- icon icon.svg --output gen/app-icons
+          cp -R gen/app-icons/android/. gen/android/app/src/main/res/
+      - name: Prepare permanent release signing
+        if: inputs.mode == 'signed-release'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          node -e 'const fs=require("node:fs"); for(const key of ["ANDROID_KEYSTORE_BASE64","ANDROID_KEYSTORE_PASSWORD","ANDROID_KEY_ALIAS","ANDROID_KEY_PASSWORD"]) if(!process.env[key]) throw Error("Missing "+key); fs.mkdirSync(".signing",{recursive:true}); fs.writeFileSync(".signing/release.jks",Buffer.from(process.env.ANDROID_KEYSTORE_BASE64,"base64"),{mode:0o600});'
+          echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/.signing/release.jks" >> "$GITHUB_ENV"
+          npm run android:signing
+      - name: Build debug APK
+        if: inputs.mode == 'debug'
+        run: npm run tauri -- android build --ci --debug --apk --target aarch64 -- --locked
+      - name: Build signed release APK
+        if: inputs.mode == 'signed-release'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: npm run tauri -- android build --ci --apk --target aarch64 -- --locked
+      - name: Verify APK signature and stage accurately named artifact
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find gen/android/app/build/outputs/apk -type f -name '*.apk')
+          test "${#apks[@]}" -eq 1
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "${apks[0]}"
+          mkdir -p release-assets
+          if [[ "$MODE" == signed-release ]]; then
+            name=HomeYield-android-arm64.apk
+          else
+            name=HomeYield-android-arm64-debug.apk
+          fi
+          cp "${apks[0]}" "release-assets/$name"
+          (cd release-assets && sha256sum "$name" > "$name.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-arm64-${{ inputs.mode }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove release signing material
+        if: always()
+        run: rm -rf .signing
+
+  publish:
+    needs: build
+    if: inputs.publish_to_release && inputs.mode == 'signed-release' && inputs.release_tag != ''
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-arm64-signed-release
+          path: release-assets
+      - name: Attach only verified signed APK to existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          test "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = false
+          gh release upload "$TAG" release-assets/*

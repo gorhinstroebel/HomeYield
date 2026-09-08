@@ -1,0 +1,26 @@
+{
+  "name": "homeyield",
+  "version": "1.0.1",
+  "private": true,
+  "description": "HomeYield web, desktop, and mobile application",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build-frontend.cjs",
+    "dev": "node scripts/serve.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "test:ui": "playwright test",
+    "test:windows": "node scripts/smoke-windows.cjs",
+    "tauri": "tauri",
+    "build:windows": "tauri build --bundles nsis",
+    "build:android:preview": "node scripts/build-android-preview.cjs",
+    "release:stage": "node scripts/stage-release.cjs",
+    "release:verify": "node scripts/verify-release.cjs",
+    "android:signing": "node scripts/configure-android-signing.cjs"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.4",
+    "@playwright/test": "1.63.0"
+  }
+}
