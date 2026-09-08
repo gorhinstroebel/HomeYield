@@ -10,7 +10,7 @@ A responsive, offline-capable plant-care companion. The same dependency-free HTM
 
 `Cargo.toml`, `lib.rs`, `main.rs`, `build.rs`, and `tauri.conf.json` intentionally live at the repository root. Cargo declares explicit source paths; Tauri capabilities live in `capabilities/`. Native icons are the existing root PNG/ICO/ICNS files. No `src-tauri` directory is required.
 
-The root web files are authoritative. `npm run build` deterministically recreates `dist/` from an explicit public-asset list, including `downloads.html`, `downloads.js`, and `downloads.css`. It never copies Rust source, Python, databases, or signing material. Tracked `dist/` is retained for compatibility, but neither native builds nor Pages deployments rely on its old contents. `sync-tauri-frontend.sh` calls the same cross-platform Node build script.
+The root web files are authoritative. `npm run build` deterministically recreates ignored `dist/` from an explicit public-asset list, including `downloads.html`, `downloads.js`, and `downloads.css`. It never copies Rust source, Python, databases, or signing material. Neither native builds nor Pages deployments rely on committed build output. `sync-tauri-frontend.sh` calls the same cross-platform Node build script.
 
 The flattened `MainActivity.java`, `AndroidManifest.xml`, Gradle files, and associated Android resources are **legacy reference files**, not the supported build. Do not run the root `gradlew` to build HomeYield. Tauri generates the actual mobile projects under ignored `gen/android` and `gen/apple`.
 
@@ -103,9 +103,23 @@ After collecting all desktop artifacts into `release-assets`, run `npm run relea
 
 ## Android: real Tauri APKs
 
-On Windows, Tauri's Android packaging requires permission to create symbolic links. If your organization or device policy disallows this, use the Linux Android workflow; do not change machine security policy just to complete a build. A compiled Android `.so` is not an installable APK.
+### Installable local preview
 
-Install Android Studio, JDK 21, Android SDK 36 / build-tools 36.0.0, NDK 27.2.12479018, and set `JAVA_HOME`, `ANDROID_HOME`, and `NDK_HOME` as described in the [Tauri Android prerequisites](https://v2.tauri.app/start/prerequisites/#android). Then:
+```powershell
+npm ci
+rustup target add aarch64-linux-android
+npm run build:android:preview
+```
+
+This produces `release-assets\HomeYield-android-arm64-preview.apk` and its `.sha256` checksum for ARM64 phones running Android 7.0 or later with an up-to-date Android System WebView. The APK uses optimized release code and the real Tauri/SQLite backend. It is **signed with the standard local Android development key**, not a production key, and is not suitable for Google Play. The local downloads page offers it after building; the script does not upload it anywhere.
+
+On Windows without symlink permission, the script accepts only Tauri's specific symlink failure **after native release compilation succeeds**. It copies the fresh ARM64 library into Android's standard `jniLibs` directory, then uses the generated Gradle release task to package it, excluding only the already-completed Rust task. It does not change Windows security policy or reuse a library after a compilation failure.
+
+The script generates HomeYield launcher icons from `icon.svg`, then verifies the ELF architecture, APK signature, 16 KB native-library alignment, package ID, version, and launcher activity before replacing a staged APK. It preserves the development signing key in your Android user directory (normally `~/.android/debug.keystore`). Back that key up if you want future previews to update an existing installation. Never delete an installed app just to change signing keys without first preserving its garden data.
+
+### Toolchain and production builds
+
+Install JDK 21, Android SDK 36 / build-tools 36.0.0, and NDK 27 (the local build was verified with 27.3.13750724; CI pins 27.2.12479018). Set `JAVA_HOME`, `ANDROID_HOME`, and `NDK_HOME` as described in the [Tauri Android prerequisites](https://v2.tauri.app/start/prerequisites/#android). The preview command also detects the default Windows SDK and an installed NDK. Android Studio is optional if its command-line tools are installed. The standard Tauri commands are:
 
 ```powershell
 rustup target add aarch64-linux-android
@@ -148,3 +162,9 @@ npm run tauri -- ios build --ci --target aarch64 --export-method app-store-conne
 ```
 
 See [Tauri iOS signing](https://v2.tauri.app/distribute/sign/ios/) for obtaining certificates/profiles. The PWA remains the browser-based option for iPhones when no provisioned native build is available.
+
+## Regenerating a clean checkout
+
+Generated frontend/native projects, dependencies, test output, and Cargo/Gradle build caches are ignored rather than committed. After cleanup, restore dependencies with `npm ci`, recreate the web build with `npm run build`, and rebuild Android with `npm run build:android:preview` (it regenerates `gen/android` automatically). Rust dependencies are restored by Cargo using `Cargo.lock`.
+
+Finished installers, APKs, checksums, and the preserved Windows application executable live in ignored `release-assets/`; they are kept locally during cleanup. Source assets and dependency lockfiles remain tracked. Garden databases under `data/` and signing keys are **not regenerable** and must be preserved, even though they are ignored.

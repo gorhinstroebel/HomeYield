@@ -3,7 +3,7 @@ const path = require('node:path');
 const contract = require('./release-assets.cjs');
 const { hasBundleSignature } = require('./verify-release.cjs');
 
-const names = Object.freeze(Object.values(contract).flat());
+const names = Object.freeze([...Object.values(contract).flat(), 'HomeYield-android-arm64-preview.apk']);
 
 function localAsset(root, name) {
   if (!names.includes(name)) return null;

@@ -62,6 +62,10 @@ jobs:
           fi
       - name: Generate real Tauri Android project
         run: npm run tauri -- android init --ci --skip-targets-install
+      - name: Generate HomeYield launcher icons
+        run: |
+          npm run tauri -- icon icon.svg --output gen/app-icons
+          cp -R gen/app-icons/android/. gen/android/app/src/main/res/
       - name: Prepare permanent release signing
         if: inputs.mode == 'signed-release'
         env:

@@ -80,7 +80,7 @@ for (const [width, height] of viewports) {
     await page.waitForLoadState("load");
     await expect(page.locator("#release-title")).toHaveText("Installers have not been published yet.");
     await fitsViewport(page);
-    await expect(page.locator("[data-asset]")).toHaveCount(9);
+    await expect(page.locator("[data-asset]")).toHaveCount(10);
     if ([390, 1440].includes(width)) await page.screenshot({ path: testInfo.outputPath("downloads-dark.png"), fullPage: true });
     expect(errors).toEqual([]);
   });

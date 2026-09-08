@@ -45,6 +45,17 @@ test('local downloads reject corrupt or partial installers', (t) => {
   }
 });
 
+test('local preview APK is downloadable without being described as a production release', (t) => {
+  const root = fixture(t);
+  const name = 'HomeYield-android-arm64-preview.apk';
+  const binary = Buffer.alloc(2048);
+  binary.set([0x50, 0x4b, 0x03, 0x04]);
+  fs.writeFileSync(path.join(root, 'release-assets', name), binary);
+  assert.equal(localRelease(root).assets[0].name, name);
+  assert.equal(localAsset(root, 'HomeYield-android-arm64.apk'), null);
+  assert.equal(localRelease(root).assets[0].browser_download_url, `/local-downloads/${name}`);
+});
+
 test('local metadata can only point to same-origin named download routes', () => {
   const origin = 'http://127.0.0.1:4173';
   const asset = { name: installer, state: 'uploaded', size: 2048 };

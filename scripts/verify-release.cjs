@@ -9,6 +9,7 @@ function hasBundleSignature(name, data) {
   return extension === '.exe' ? data.subarray(0, 2).toString() === 'MZ'
     : extension === '.deb' ? data.subarray(0, 8).toString() === '!<arch>\n'
     : extension === '.AppImage' ? data.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46]))
+    : extension === '.apk' ? data.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
     : extension === '.dmg' && data.subarray(data.length - 512, data.length - 508).toString() === 'koly';
 }
 

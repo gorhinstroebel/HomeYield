@@ -78,7 +78,11 @@
             <article class="platform-card mobile-platform">
               <div class="platform-heading"><span class="platform-symbol" aria-hidden="true"><svg viewBox="0 0 32 32"><rect x="8" y="2" width="16" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 6h6m-4 20h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><div><h3>Android</h3><p>Ready when you head outside.</p></div></div>
               <p class="platform-requirements">A native Tauri APK is available when a signed mobile release is published. Browser installation works today.</p>
-              <div class="download-options"><a class="download-option" data-asset="HomeYield-android-arm64.apk" data-label="Download Android ARM64 APK" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Android ARM64 <small>Signed .apk installer</small></span><span class="asset-status">View releases &rarr;</span></a></div>
+              <div class="download-options">
+                <a class="download-option" data-asset="HomeYield-android-arm64.apk" data-label="Download Android ARM64 APK" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Android ARM64 <small>Production-signed .apk installer</small></span><span class="asset-status">View releases &rarr;</span></a>
+                <a class="download-option" data-asset="HomeYield-android-arm64-preview.apk" data-label="Download Android ARM64 preview APK" href="https://github.com/gorhinstroebel/HomeYield/releases"><span>Android preview <small>Development-key signed &middot; .apk</small></span><span class="asset-status">View releases &rarr;</span></a>
+              </div>
+              <span class="mobile-note">The preview is for local testing, not Google Play. Keep the signing key to update an existing preview installation.</span>
               <a class="text-link" href="#mobile-install">Install from your browser &rarr;</a>
             </article>
             <article class="platform-card mobile-platform">

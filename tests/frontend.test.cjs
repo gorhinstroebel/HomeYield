@@ -36,7 +36,7 @@ test("download page offers every packaged desktop architecture without guessed i
     "HomeYield-windows-x64-setup.exe", "HomeYield-windows-arm64-setup.exe",
     "HomeYield-macos-x64.dmg", "HomeYield-macos-arm64.dmg",
     "HomeYield-linux-x64.AppImage", "HomeYield-linux-arm64.AppImage",
-    "HomeYield-linux-x64.deb", "HomeYield-linux-arm64.deb", "HomeYield-android-arm64.apk",
+    "HomeYield-linux-x64.deb", "HomeYield-linux-arm64.deb", "HomeYield-android-arm64.apk", "HomeYield-android-arm64-preview.apk",
   ]) assert.ok(html.includes(`data-asset="${name}"`), `Missing ${name}`);
   assert.ok(!html.includes("/releases/latest/download/"), "Unpublished assets must not be guessed");
   assert.match(html, /no public iOS installer yet/);
