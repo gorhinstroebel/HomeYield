@@ -1,0 +1,84 @@
+name: Build provisioned Tauri iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      export_method:
+        description: Profile must match this export method; neither is an unrestricted download
+        type: choice
+        options: [app-store-connect, release-testing]
+        default: app-store-connect
+      build_number:
+        description: Unique numeric build number for App Store Connect uploads
+        type: string
+        required: true
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+      IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Require actual device signing and provisioning
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          node -e 'for(const key of ["APPLE_DEVELOPMENT_TEAM","IOS_CERTIFICATE","IOS_CERTIFICATE_PASSWORD","IOS_MOBILE_PROVISION"]) if(!process.env[key]) throw Error("Missing "+key); if(!/^[1-9][0-9]*$/.test(process.env.BUILD_NUMBER)) throw Error("A positive numeric build number is required");'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: ios-arm64
+      - name: Ensure Xcode project generator is installed
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/check-version.cjs
+      - name: Generate Tauri iOS project (not the legacy Android wrapper)
+        run: npm run tauri -- ios init --ci --skip-targets-install
+      - name: Archive and export a signed device IPA
+        env:
+          EXPORT_METHOD: ${{ inputs.export_method }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: npm run tauri -- ios build --ci --target aarch64 --export-method "$EXPORT_METHOD" --build-number "$BUILD_NUMBER" -- --locked
+      - name: Verify device bundle and signature
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets .signing/verification
+          python3 - <<'PY'
+          import pathlib, shutil
+          files = list(pathlib.Path("gen/apple").rglob("*.ipa"))
+          if len(files) != 1:
+              raise SystemExit(f"Expected one signed IPA, found {len(files)}")
+          shutil.copyfile(files[0], "release-assets/HomeYield-ios-arm64.ipa")
+          PY
+          unzip -q release-assets/HomeYield-ios-arm64.ipa -d .signing/verification
+          app=(.signing/verification/Payload/*.app)
+          test "${#app[@]}" -eq 1
+          test -f "${app[0]}/embedded.mobileprovision"
+          codesign --verify --deep --strict "${app[0]}"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :DTPlatformName' "${app[0]}/Info.plist")" = iphoneos
+          (cd release-assets && shasum -a 256 HomeYield-ios-arm64.ipa > HomeYield-ios-arm64.ipa.sha256)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-arm64-${{ inputs.export_method }}
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove verification files
+        if: always()
+        run: rm -rf .signing

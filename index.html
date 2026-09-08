@@ -4,16 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#234b35" />
-    <meta name="description" content="Your tap-first garden companion, backed by local SQLite." />
+    <meta name="description" content="A calmer way to grow. Track your plants, get practical care reminders, and follow your harvest with HomeYield." />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="homeyield-storage" content="browser" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
     <link rel="manifest" href="manifest.json" />
     <title>HomeYield</title>
     <script>
       (() => {
-        const saved = localStorage.getItem("homeyield-garden");
-        if (!saved) return;
         try {
+          const saved = localStorage.getItem("homeyield-garden");
+          if (!saved) return;
           const theme = JSON.parse(saved).theme;
           if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
         } catch (error) {
@@ -24,10 +26,12 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main id="app" aria-live="polite"></main>
-    <script src="app.js?v=20260906"></script>
+    <a class="skip-link" href="#app-content">Skip to content</a>
+    <div id="app"></div>
+    <noscript><main class="privacy-page"><h1>Welcome to HomeYield</h1><p>Enable JavaScript to use your garden companion, or <a href="downloads.html">explore app downloads</a>.</p></main></noscript>
+    <script src="app.js"></script>
     <script>
-      if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch((error) => console.warn("HomeYield offline shell unavailable.", error));
+      if ("serviceWorker" in navigator && !window.__TAURI__ && !window.__TAURI_INTERNALS__ && ["https:", "http:"].includes(location.protocol)) navigator.serviceWorker.register("sw.js").catch((error) => console.warn("HomeYield offline shell unavailable.", error));
     </script>
   </body>
 </html>

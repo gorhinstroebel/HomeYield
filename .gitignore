@@ -6,3 +6,17 @@ android/app/build/
 HomeYield-*.apk
 src-tauri/target/
 src-tauri/gen/
+node_modules/
+target/
+gen/
+release-assets/
+.packaging-test-work/
+.signing/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.p8
+test-results/
+playwright-report/
+.native-smoke-profile/

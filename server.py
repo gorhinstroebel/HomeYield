@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,6 +35,18 @@ class HomeYieldHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def do_GET(self) -> None:
+        if self.path.split("?")[0] in ("/", "/index.html"):
+            content = (ROOT / "index.html").read_text(encoding="utf-8").replace(
+                'name="homeyield-storage" content="browser"',
+                'name="homeyield-storage" content="sqlite"',
+            ).encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(content)
+            return
         if self.path == "/api/health":
             self.send_json(HTTPStatus.OK, {"ok": True, "service": "homeyield"})
             return
@@ -113,7 +126,7 @@ class HomeYieldHandler(SimpleHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
-            "connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com "
+            "connect-src 'self' https://api.github.com https://api.open-meteo.com https://geocoding-api.open-meteo.com "
             "https://nominatim.openstreetmap.org; img-src 'self' data: blob:; "
             "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'",
         )
@@ -125,4 +138,5 @@ if __name__ == "__main__":
     class ReusableThreadingHTTPServer(ThreadingHTTPServer):
         allow_reuse_address = True
 
-    ReusableThreadingHTTPServer(("127.0.0.1", 4173), HomeYieldHandler).serve_forever()
+    port = int(os.environ.get("PORT", "4173"))
+    ReusableThreadingHTTPServer(("127.0.0.1", port), HomeYieldHandler).serve_forever()

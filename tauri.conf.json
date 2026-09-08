@@ -4,17 +4,20 @@
   "version": "1.0.1",
   "identifier": "com.homeyield.android13.preview",
   "build": {
-    "frontendDist": "../dist"
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:4173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "dist"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "title": "HomeYield",
-        "width": 430,
-        "height": 850,
+        "width": 1200,
+        "height": 820,
         "minWidth": 320,
-        "minHeight": 600,
+        "minHeight": 400,
         "resizable": true
       }
     ],
@@ -25,6 +28,16 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["../icon.svg"]
+    "icon": ["32x32.png", "128x128.png", "128x128@2x.png", "icon.icns", "icon.ico"],
+    "category": "Lifestyle",
+    "shortDescription": "A practical companion for caring for real plants.",
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
